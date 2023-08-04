@@ -11,7 +11,7 @@ srun -p interactive --pty bash
 module load R
 R
 
-library(tidyverse)
+library(tidyverse) 
 library(data.table)
 library(pacman)
 library(tidyverse)

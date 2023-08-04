@@ -6,7 +6,7 @@
 
 # srun -p interactive --pty bash
 
-# module load R
+# module load R 
 
 R
 
