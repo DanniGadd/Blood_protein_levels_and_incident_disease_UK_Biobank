@@ -5,7 +5,7 @@
 ###############################################################################################
 
 Subset 3k correct file to include 1.5k protein release, then prep accordingly for analyses
-
+ 
 cd /path_to_file.../
 srun -p interactive --pty bash
 module load R
