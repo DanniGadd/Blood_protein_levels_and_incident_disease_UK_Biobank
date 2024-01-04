@@ -1,19 +1,23 @@
 
 ### Prep data for shiny app integrations
 
+
 ##################################################
 
 ### FORMAT INPUT DATA: - protein network
 
 ### Format for network plot - 6744 assocs full model as input
-assocs <- read.csv("Associations_retained_Bon.csv")
+assocs <- read.csv("/path_to_file.../Associations_retained_Bon.csv")
 
 # Select same cols as before
 assocs <- assocs[which(colnames(assocs) %in% c('Predictor', 'Naming.x', 'Hazard.Ratio', 'LCI', 'UCI','P.Value', 'No..of.Cases',
                                                'No..of.Controls', 'cox.zph_protein'))]
 assocs <- assocs[c(1,9,2,3,4,5,6,7,8)]
+
 names(assocs) <- c('Predictor', 'Outcome', 'HR', 'LCI', 'UCI', 'P.Value', 'N Cases', 'N Controls', 'Protein zph')
+
 assocs$Protein <- sub("\\..*", "", assocs$Predictor)
+
 
 # Set edge colours based on HR < 1 or > 1
 assocs$edge_col <- ifelse(assocs[,3] < 1, 'blue', 'red')
@@ -22,21 +26,19 @@ assocs$edge_col <- ifelse(assocs[,3] < 1, 'blue', 'red')
 assocs[,3] <- ifelse(assocs[,3] < 1, 1-assocs[,3], 1-(2-assocs[,3]))
 
 # Save out for manju
-write.csv(assocs, 'Cox/assocs.csv', row.names = F)
+write.csv(assocs, '/path_to_file.../assocs.csv', row.names = F)
 
 ##################################################
 
 ### FORMAT INPUT DATA: PANEL ONE - COX PH 16 year
 
 library(tidyverse)
-# Load data
-bind <- read.csv("iteration_sens_joint_assocs_allocation_controls_PA_corrected.csv")
+bind <- read.csv("/path_to_file.../iteration_sens_joint_assocs_allocation_controls_PA_corrected.csv")
 
 names(bind) <- c('X', 'Predictor', 'Outcome', 'Iteration', 'Hazard.Ratio', 'LCI', 'UCI', 'P.Value', 'Controls', 'Cases',
                  'cox.zph_protein', 'cox.zph_global', 'Dis_name')
 
 bind$Prot_name <- sub("\\..*", "", bind$Predictor)
-
 
 # Create violations and significance variables
 bind <- bind %>% mutate(Schoenfeld = case_when(
@@ -45,8 +47,8 @@ bind <- bind %>% mutate(Schoenfeld = case_when(
 ))
 
 bind <- bind %>% mutate(Association = case_when(
-    bind$P.Value < 0.0000031 ~ 'P < 0.01',
-    bind$P.Value >= 0.0000031 ~ 'P >= 0.01'
+    bind$P.Value < 0.0000031 ~ 'P sig',
+    bind$P.Value >= 0.0000031 ~ 'P nonsig'
 ))
 
 # Format disease names
@@ -81,7 +83,7 @@ bind <- bind %>% mutate(Dis_name = case_when(
 bind$col_variable <- ifelse(bind$Schoenfeld == 'Local P < 0.05', 'coral1', 'azure4')
 
 # Set variable to dictate shape based on whether P full < 0.01
-bind$shape_variable <- ifelse(bind$Association == 'P < 0.01', 'circle', 'triangle')
+bind$shape_variable <- ifelse(bind$Association == 'P sig', 'circle', 'triangle')
 
 bind <- bind[c(1:12,14:16,13,17,18)]
 
@@ -89,14 +91,6 @@ bind <- bind[c(1:12,14:16,13,17,18)]
 bind <- bind[-which(bind$Iteration %in% 16),]
 
 bind$Iteration <- ifelse(bind$Iteration == 17, 16, bind$Iteration)
-
-# Check ALS associations
-als <- bind[which(bind$Outcome %in% 'ALS_FO'),]
-nefl <- als[which(als$Predictor %in% 'NEFL.P07196.OID20871.v1'),]
-
-write.csv(bind, 'Results/Cox/bind.csv', row.names = F)
-
+write.csv(bind, '/path_to_file.../bind.csv', row.names = F)
 bind <- na.omit(bind)
-
-write.csv(bind, 'Results/Cox/bind_narm.csv', row.names = F)
-
+write.csv(bind, '/path_to_file.../bind_narm.csv', row.names = F)

@@ -11,18 +11,21 @@ print(paste0('taskid for this iteration is ', taskid))
 library(survival)
 library(survminer)
 library(tidyverse)
+
 print('Packages loaded - now loading d1 file.')
 
 # Set locations
-location_codes <- 'prepped_traits_cancer_reg/'
-location_self <- 'self_report_preps/'
-location_results <- 'Results/Cox/Results/'
+location_codes <- '/path_to_files.../prepped_traits_used_with_dates/'
+location_self <- '/path_to_files.../self_report_preps/'
+
+location_tables <- '/path_to_files.../Tables/'
+location_results <- '/path_to_files.../results/results/'
 
 # Read in phenotypes
-d1 <- readRDS("d1_cancer_reg_201612.rds")
+d1 <- readRDS("/path_to_files.../d1_202206_test.rds")
 
 # Add PA as covariate 
-PA <- read.csv('Censor_test/PA.csv')
+PA <- read.csv('/path_to_files.../covariates_additional.csv')
 PA <- PA[which(colnames(PA) %in% c('SampleID', 'PA'))]
 d1 <- left_join(d1, PA, by = 'SampleID')
 
@@ -32,19 +35,34 @@ clock <- names(d1)[56:1523]
 
 # Set disease and read in disease codes for the iteration (array)
 iteration <- taskid
-diseases <- c('BRAIN_FO', 'Breast_FO', 'Colorectal_FO', 'GYN_FO', 'LUNG_FO', 'Prostate_FO')
-restricted_list <- c('AL', 'VD')
-sex_list <- c('CYS', 'ENDO', 'Breast_FO', 'GYN_FO')
-male_list <- c('Prostate_FO')
+
+# Diseases - set lists
+diseases <- list.files('/path_to_files.../prepped_traits_used_with_dates/')
+diseases <- sub(".csv", "", diseases)
+
+restricted_list <- c('AL', 'VD', 'AL_FO', 'VD_FO')
+sex_list <- c('CYS', 'CYS_FO', 'ENDO', 'ENDO_FO')
+male_list <- c('Prostate')
+Flist <- diseases[grep('_FO', diseases)]
+
 name <- as.character(diseases[iteration])
 print(paste0('disease for this iteration is ', name))
+
 codes <- read.csv(paste0(location_codes, name, '.csv'))
-self <- read.csv(paste0(location_self, name, '.csv'))
+
+if(name %in% Flist){
+  print('No self loaded')
+} else {
+  self <- read.csv(paste0(location_self, name, '.csv'))
+}
+
 now <- Sys.time()
 print(paste0('Models initiating. Time start stamp: ', now, '.'))
+
 print('Commencing runs.')
 
 # Basic models per protein
+
 d1_data <- d1
 
 mat_hazard <- matrix(nrow=length(clock),ncol=10)
@@ -55,8 +73,8 @@ for(j in 1:length(clock)){
     tmp1 = codes[which(codes$SampleID %in% dat1$SampleID),] 
     
     ## Exclude Indiviudals who Reported Disease at Study Baseline 
-    if(dim(self)[1] < 2){
-      print('Self less than 2 - skipping')
+    if(name %in% Flist){
+      print('Self skipped - FO trait')
     } else {
       tmp1 = tmp1[-which(tmp1$SampleID %in% self$SampleID),]
     }
@@ -110,7 +128,7 @@ for(j in 1:length(clock)){
       p1 <- table$table[,"p"]
       output_hazard[j,9] <-p1[1]
       output_hazard[j,10] <-p1[10]
-      cox$Event <- ifelse(cox$tte < 0, "NA", cox$Event)
+      cox$Event <- ifelse(cox$tte < -1, "NA", cox$Event)
       # write.csv(cox, paste0(location_tables, name ,'.csv'), row.names = F)
     } else {
       if(name %in% sex_list){
@@ -128,7 +146,7 @@ for(j in 1:length(clock)){
         p1 <- table$table[,"p"]
         output_hazard[j,9] <-p1[1]
         output_hazard[j,10] <-p1[9]
-        cox$Event <- ifelse(cox$tte < 0, "NA", cox$Event)
+        cox$Event <- ifelse(cox$tte < -1, "NA", cox$Event)
         # write.csv(cox, paste0(location_tables, name ,'.csv'), row.names = F)
       } else {
         if(name %in% male_list){
@@ -146,32 +164,29 @@ for(j in 1:length(clock)){
           p1 <- table$table[,"p"]
           output_hazard[j,9] <-p1[1]
           output_hazard[j,10] <-p1[9]
-          cox$Event <- ifelse(cox$tte < 0, "NA", cox$Event)
+          cox$Event <- ifelse(cox$tte < -1, "NA", cox$Event)
           # write.csv(cox, paste0(location_tables, name ,'.csv'), row.names = F)
         } else {
-            print('Trait in neither list - running as standard.')  
-            mod = coxph(Surv(cox$tte, cox$Event) ~ scale(cox[,clock[[j]]]) + factor(cox$Sex) + cox$Age_assessment + cox$BMI + cox$Dep + as.factor(cox$Alc) + as.factor(cox$Smo) + as.factor(cox$Edu) + as.factor(cox$PA), data = cox)
-            print(j)
-            output_hazard[j,1] <- as.character(clock[[j]])
-            output_hazard[j,2] <- as.character(name)
-            output_hazard[j,3:5]<-round(exp(cbind(coef(mod), confint(mod)))[1,1:3],2)
-            output_hazard[j,6] <- summary(mod)$coefficients[1,5]
-            output_hazard[j,8] <- mod$n[1] - mod$nevent[1]
-            output_hazard[j,7] <- mod$nevent[1]
-            table <- cox.zph(mod)
-            p1 <- table$table[,"p"]
-            output_hazard[j,9] <-p1[1]
-            output_hazard[j,10] <-p1[10]
-            cox$Event <- ifelse(cox$tte < -1, "NA", cox$Event)
-            # write.csv(cox, paste0(location_tables, name ,'.csv'), row.names = F)
+          print('Trait in neither list - running as standard.')  
+          mod = coxph(Surv(cox$tte, cox$Event) ~ scale(cox[,clock[[j]]]) + factor(cox$Sex) + cox$Age_assessment + cox$BMI + cox$Dep + as.factor(cox$Alc) + as.factor(cox$Smo) + as.factor(cox$Edu) + as.factor(cox$PA), data = cox)
+          print(j)
+          output_hazard[j,1] <- as.character(clock[[j]])
+          output_hazard[j,2] <- as.character(name)
+          output_hazard[j,3:5]<-round(exp(cbind(coef(mod), confint(mod)))[1,1:3],2)
+          output_hazard[j,6] <- summary(mod)$coefficients[1,5]
+          output_hazard[j,8] <- mod$n[1] - mod$nevent[1]
+          output_hazard[j,7] <- mod$nevent[1]
+          table <- cox.zph(mod)
+          p1 <- table$table[,"p"]
+          output_hazard[j,9] <-p1[1]
+          output_hazard[j,10] <-p1[10]
+          cox$Event <- ifelse(cox$tte < -1, "NA", cox$Event)
+          # write.csv(cox, paste0(location_tables, name ,'.csv'), row.names = F)
         }
-        
       }
     }
   }, error = function(e) cat("skipped"))
 } 
-
-print(dim(cox))
 
 # Save results
 comb <- output_hazard
@@ -183,5 +198,7 @@ write.csv(comb, paste0(location_results, name, '_FULL.csv'), row.names = F)
 end <- Sys.time()
 print(paste0('Models complete. Time end stamp: ', end, '.'))
 
+
+   
 
 

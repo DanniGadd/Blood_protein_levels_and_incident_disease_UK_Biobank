@@ -11,40 +11,45 @@ print(paste0('taskid for this iteration is ', taskid))
 library(survival)
 library(survminer)
 library(tidyverse)
+
 print('Packages loaded - now loading d1 file.')
 
 # Set locations
-location_codes <- 'prepped_traits_cancer_reg/'
-location_self <- 'self_report_preps/'
-location_results <- 'Results/Cox/Results/'
+location_codes <- '/path_to_files.../prepped_traits_cancer_reg/'
+location_self <- '/path_to_files.../self_report_preps/'
+
+location_results <- '/path_to_files.../Results/'
 
 # Read in phenotypes
-d1 <- readRDS("d1_cancer_reg_201612.rds")
+d1 <- readRDS("/path_to_files.../d1_cancer_reg.rds")
 
 # Add PA as covariate 
-PA <- read.csv('Censor_test/PA.csv')
+PA <- read.csv('/path_to_files.../covariates_additional.csv')
 PA <- PA[which(colnames(PA) %in% c('SampleID', 'PA'))]
 d1 <- left_join(d1, PA, by = 'SampleID')
 
-# d1 <- as.data.frame(d1)
 # Set protein clock for loops
 clock <- names(d1)[56:1523] 
 
 # Set disease and read in disease codes for the iteration (array)
 iteration <- taskid
 diseases <- c('BRAIN_FO', 'Breast_FO', 'Colorectal_FO', 'GYN_FO', 'LUNG_FO', 'Prostate_FO')
-restricted_list <- c('AL', 'VD')
-sex_list <- c('CYS', 'ENDO', 'Breast_FO', 'GYN_FO')
+sex_list <- c('Breast_FO', 'GYN_FO')
 male_list <- c('Prostate_FO')
+
 name <- as.character(diseases[iteration])
 print(paste0('disease for this iteration is ', name))
+
 codes <- read.csv(paste0(location_codes, name, '.csv'))
 self <- read.csv(paste0(location_self, name, '.csv'))
+
 now <- Sys.time()
 print(paste0('Models initiating. Time start stamp: ', now, '.'))
+
 print('Commencing runs.')
 
 # Basic models per protein
+
 d1_data <- d1
 
 mat_hazard <- matrix(nrow=length(clock),ncol=10)
@@ -56,7 +61,7 @@ for(j in 1:length(clock)){
     
     ## Exclude Indiviudals who Reported Disease at Study Baseline 
     if(dim(self)[1] < 2){
-      print('Self less than 2 - skipping')
+      print(' - skipping')
     } else {
       tmp1 = tmp1[-which(tmp1$SampleID %in% self$SampleID),]
     }
@@ -90,7 +95,6 @@ for(j in 1:length(clock)){
     cox$tte = cox$age_at_event - cox$Age_assessment
     cox$tte = as.numeric(cox$tte)
     cox$tte <- ifelse(cox$tte < 0, "NA", cox$tte)
-    # cox$tte = ifelse(cox$tte < 0, 0, cox$tte)
     cox$Event = as.numeric(cox$Event)
     cox$tte<-as.numeric(cox$tte)
     

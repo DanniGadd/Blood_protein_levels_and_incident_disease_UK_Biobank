@@ -4,7 +4,6 @@
 
 ###############################################################################################
 
-# srun -p interactive --pty bash
 # args <- commandArgs(trailingOnly=TRUE)
 # taskid <- as.numeric(args[1])
 # print(paste0('taskid for this iteration is ', taskid))
@@ -18,10 +17,10 @@ library(tidyverse)
 print('Packages loaded - now loading d1 file.')
 
 # Read in phenotypes
-d1 <- readRDS("d1_mortality_202111.rds")
+d1 <- readRDS("/path_to_files.../d1_mortality_202112.rds")
 
 # Add PA as covariate 
-PA <- read.csv('Censor_test/PA.csv')
+PA <- read.csv('/path_to_files.../covariates_additional.csv')
 PA <- PA[which(colnames(PA) %in% c('SampleID', 'PA'))]
 d1 <- left_join(d1, PA, by = 'SampleID')
 
@@ -30,19 +29,24 @@ clock <- names(d1)[56:1523]
 
 # Set disease and read in disease codes for the iteration (array)
 iteration <- taskid
+
 diseases <- c('DEATH')
+
 name <- as.character(diseases[iteration])
 print(paste0('disease for this iteration is ', name))
-codes <- read.csv(paste0("prepped_death/DEATH.csv"))
+codes <- read.csv(paste0("/path_to_files.../prepped_death/DEATH.csv"))
 
-location_tables <- 'Results/Cox/Tables/'
-location_results <- 'Results/Cox/Results/'
+
+location_tables <- '/path_to_files.../Death/Tables/'
+location_results <- '/path_to_files.../Death/Results/'
 
 now <- Sys.time()
 print(paste0('Models initiating. Time start stamp: ', now, '.'))
+
 print('Commencing runs.')
 
 # Basic models per protein
+
 d1_data <- d1
 
 mat_hazard <- matrix(nrow=length(clock),ncol=10)
@@ -116,6 +120,7 @@ print(paste0('Models complete. Time end stamp: ', end, '.'))
 
 
 ### FULL MODEL DEATH  
+
 d1_data <- d1
 
 mat_hazard <- matrix(nrow=length(clock),ncol=10)

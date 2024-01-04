@@ -4,10 +4,6 @@
 
 ###############################################################################################
 
-### Interactive session and R required for script troubleshooting
-# srun -p interactive --pty bash
-# module load R/4.2.0-foss-2021b
-
 args <- commandArgs(trailingOnly=TRUE)
 taskid <- as.numeric(args[1])
 print(paste0('taskid for this iteration is ', taskid))
@@ -23,20 +19,18 @@ library(data.table)
 library(pacman)
 
 # Load in additional covariates required in rerun
-merge <- read.csv('Covariate_preps/imputed_covs_transformed.csv')
+merge <- read.csv('/path_to_file.../imputed_covs_transformed.csv')
 
 ###############################################################################################
 
 ### Define diseases from chosen models
 
-# i <- taskid
+location_out <- "/path_to_file.../ProteinScores/Run_210723/"
+core_models_output <- '/path_to_file.../ProteinScores/Run_210723_processing/covariate_assessment/'
 
-location_out <- "Results/Cox/Proteinscores/"
-core_models_output <- 'Results/Cox/Score_processing/covariate_assessment/'
+chosen <- read.csv("/path_to_file.../ProteinScores/Run_210723_processing/models_chosen_accounted_features.csv")
 
-chosen <- read.csv("Results/Cox/Score_processing/models_chosen_accounted_features.csv")
-
-location_out <- "01_paper/Results/Cox/Proteinscores/"
+location_out <- "/path_to_file.../ProteinScores/Run_210723/"
 
 chosen_it <- chosen$iteration
 chosen_dis <- chosen$Outcome
@@ -50,18 +44,7 @@ test <- function(mprModel, testData, testTarget, res_list, seed_iteration, iter,
   tryCatch({
     
     set.seed(seed_iteration)
-    # mprModel <- model_load
-    # testData <- x_test
-    # testTarget <- y_test
-    # res_list <- list
-    # seed_iteration <- seed
-    # iter <- iteration
-    # name_dis <- name
-    # output <- location_out
-    
-    # cases <- testTarget[which(testTarget$Event %in% 1),]
-    # sub <- cases[which(cases$time_to_event >9.9),]
-
+ 
     # Generate model predictions in the test data
     mprModelTestPredictions <- predictMPRModel(mprModel,
                                                data = testData,
@@ -128,21 +111,7 @@ test <- function(mprModel, testData, testTarget, res_list, seed_iteration, iter,
     # List models
     models <- list(r = riskFactorsOnlyCoxPH, f = fullCoxPH, t = ProteinOnly, s = allrisk, b = allriskprotein,
                    x = clinicalonly , y = clinicalrisk, z = clinicalriskprotein)
-    
-    # dataDF <- testTarget
-    # coxPHModel <- riskFactorsOnlyCoxPH
-    # threshold = 10
-    # 
-    # uniqueTimes <- uniqueTimes <- sort(unique(c(dataDF$time_to_event, threshold)))
-    # thresholdIndex <- match(threshold, uniqueTimes)
-    # cumulativeBaseHaz <- gbm::basehaz.gbm(dataDF$time_to_event, dataDF$Event, predict(coxPHModel), uniqueTimes)
-    # print('Cumulative baseline hazard presence NA:')
-    # print(is.na(cumulativeBaseHaz))
-    # survivalPredictions <- exp(-cumulativeBaseHaz[[thresholdIndex]]) ^ exp(predict(coxPHModel))
-    # onsetPredictions <- 1 - survivalPredictions
-    
-    # Generate performance statistics - for years of follow up, comparing base HR to survival HR at threshold
-    
+
     ### For every Cox PH run in the test sample, calculate 10-year performance
     predictCoxPHOnset <- function(dataDF, coxPHModel, threshold = thr) {
       
@@ -181,9 +150,9 @@ test <- function(mprModel, testData, testTarget, res_list, seed_iteration, iter,
     # Extract onset predictions
     predictions <- lapply(testResults, function(r) {r$onsetPredictions})
     
-    # Calculate p values for AUC comparisons of interest (age/sex + protein)
+    # Calculate p values 
     p_null <- pROC::roc.test(response = testTarget$Event, predictor1 = predictions$r, predictor2 = predictions$f)$p.value
-    
+
     p_second <- pROC::roc.test(response = testTarget$Event, predictor1 = predictions$s, predictor2 = predictions$b)$p.value
     
     p_third <- pROC::roc.test(response = testTarget$Event, predictor1 = predictions$y, predictor2 = predictions$z)$p.value
@@ -215,16 +184,11 @@ test <- function(mprModel, testData, testTarget, res_list, seed_iteration, iter,
     metricsTable$test_cases <- cases_total
     metricsTable$test_cases_recoded <- cases_recoded
 
-    # Save cox test results
     saveRDS(testTarget, paste0(output, name_dis, '/files/testResults_', iter, '.rds'))
-
-    # save metrics table performances
-    # saveRDS(metricsTable, paste0(output, name_dis, '/files/metricsTable_', iter, '.rds'))
 
   }, error = function(e) cat("skipped"))
   return(metricsTable)
 }
-
 
 
 ###############################################################################################
@@ -256,13 +220,13 @@ for(i in set){
     
     ### Define threshold per trait 
     
-    location <- '00_Run_260823/01_paper/Results/Cox/tables_cut/'
+    location <- '/path_to_file.../tables_cut/'
     
     files <- list.files(location, '.csv')
     format <- sub(".csv", "", files)
     
     ### Define the traits that will be assessed over 5yr and 10yr follow up 
-    list_5yr <- c('ALS', 'ALS_FO', 'BRAIN_FO', 'Dep', 'DEP_FO', 'LUP', 'LUP_FO', 'CYS_FO', 'ENDO_FO')
+    list_5yr <- c('ALS_FO', 'CYS_FO', 'ENDO_FO')
     list_10yr <- format[-which(format %in% list_5yr)]
     
     # Assign threshold for follow-up testing of scores based on lists above 
@@ -286,8 +250,6 @@ for(i in set){
     # Merge in added covariates
     y_test <- y_test[-c(2:6)]
     y_test <- left_join(y_test, merge, by = 'SampleID')
-    # print(head(y_test))
-    
     model_load <- readRDS(paste0(location_out, name, '/files/model_', it, '.rds'))
     
     # Test models
@@ -303,95 +265,5 @@ for(i in set){
 }
 
 result <- do.call(rbind, list)
-write.csv(result, paste0(core_models_output, '/metricsTables_chosen_joint_cov_imputed_V6_results.csv'))
-
-##################################################################################
-
-# Run extra correlations in test for between vairables and protein scores
-
-
-### Load packages
-library(readxl)
-library(tidyverse)
-library(MethylPipeR)
-library(glmnet)
-library(survival)
-library(gbm)
-library(data.table)
-library(pacman)
-
-# Load in additional covariates required in rerun
-merge <- read.csv('Covariate_preps/imputed_covs_transformed.csv')
-location_out <- "Results/Cox/Proteinscores/"
-core_models_output <- 'Results/Cox/Score_processing/covariate_assessment/'
-chosen <- read.csv("Results/Cox/Score_processing/models_chosen_accounted_features.csv")
-location_out <- "01_paper/Results/Cox/Proteinscores/"
-chosen_it <- chosen$iteration
-chosen_dis <- chosen$Outcome
-diseases <- chosen_dis
-
-list <- list()
-
-set <- 1:length(diseases)
-
-for(i in set){
-  tryCatch({
-    name <- as.character(diseases[i])
-    trait <- as.character(diseases[i])
-    print(i)
-    print(trait)
-
-    # Load test data for specific disease iteration
-    x_test <- readRDS(paste0(location_out, name, '/files/x_test_', it, '.rds'))
-    y_test <- readRDS(paste0(location_out, name, '/files/y_test_', it, '.rds'))
-    
-    # Merge in added covariates
-    y_test <- y_test[-c(2:6)]
-    y_test <- left_join(y_test, merge, by = 'SampleID')
-    model_load <- readRDS(paste0(location_out, name, '/files/model_', it, '.rds'))
-    
-    set.seed(seed_iteration)
-    mprModel <- model_load
-    testData <- x_test
-    testTarget <- y_test
-    res_list <- list
-    seed_iteration <- seed
-    iter <- iteration
-    name_dis <- name
-    output <- location_out
-    
-    # Generate model predictions in the test data
-    mprModelTestPredictions <- predictMPRModel(mprModel,
-                                               data = testData,
-                                               s = 'lambda.min')
-    
-    # Add test scores to the target y file in the test sample
-    testTarget$dScore <- mprModelTestPredictions
-    testTarget <- na.omit(testTarget)
-    
-    # Correlations
-    corr_set <- testTarget
-    corr_set <- corr_set[c(5,31:35,12:29,36)]
-    # corr_set <- as.numeric(corr_set)
-    corr_results <- data.frame(Variable = 1:24, Correlation = 1:24, P = 1:24)
-    for (k in 1:24){
-      v_name <- as.character(colnames(corr_set)[k])
-      corr_data <- corr_set[,c(k,25)]
-      corr <- cor.test(corr_data[,1], corr_data[,2])
-      r <- corr$estimate
-      P <- corr$p.value
-      
-      corr_results[k,1] <- v_name
-      corr_results[k,2] <- r
-      corr_results[k,3] <- P
-    }
-    
-    corr_results$ProteinScore <- name
-    write.csv(corr_results, paste0(output, name_dis, '_Corr_results.csv'), row.names = F)
-    
-    
-    list[[i]] <- corr_results
-    print(name_dis)
-  }, error = function(e) cat("skipped"))
-}
+write.csv(result, paste0(core_models_output, '/metricsTables_chosen_joint.csv'))
 

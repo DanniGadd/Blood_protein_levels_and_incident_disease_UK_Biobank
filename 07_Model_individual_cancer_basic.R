@@ -7,49 +7,37 @@
 args <- commandArgs(trailingOnly=TRUE)
 taskid <- as.numeric(args[1])
 print(paste0('taskid for this iteration is ', taskid))
-
 library(survival)
 library(survminer)
-
 print('Packages loaded - now loading d1 file.')
 
 # Set locations
-location_codes <- '/path_to_files.../prepped_traits_cancer_reg/'
-location_self <- '/path_to_files.../self_report_preps/'
-
-location_tables <- '/path_to_files.../Cancers/Tables/'
-location_results <- '/path_to_files.../Cancers/Results/'
+location_codes <- 'prepped_traits_cancer_reg/'
+location_self <- 'self_report_preps/'
+location_results <- 'Results/Cox/Results/'
 
 # Read in phenotypes
-d1 <- readRDS("/path_to_files.../d1_cancer_reg_202012.rds")
-# d1 <- as.data.frame(d1)
+d1 <- readRDS("d1_cancer_reg_201612.rds")
+
 # Set protein clock for loops
 clock <- names(d1)[56:1523] 
 
 # Set disease and read in disease codes for the iteration (array)
 iteration <- taskid
-
 diseases <- c('BRAIN_FO', 'Breast_FO', 'Colorectal_FO', 'GYN_FO', 'LUNG_FO', 'Prostate_FO')
-
-
 restricted_list <- c('AL', 'VD')
-sex_list <- c('CYS', 'ENDO', 'Breast_FO', 'GYN_FO')
+sex_list <- c('Breast_FO', 'GYN_FO')
 male_list <- c('Prostate_FO')
 
 name <- as.character(diseases[iteration])
 print(paste0('disease for this iteration is ', name))
-
 codes <- read.csv(paste0(location_codes, name, '.csv'))
-
 self <- read.csv(paste0(location_self, name, '.csv'))
-
 now <- Sys.time()
 print(paste0('Models initiating. Time start stamp: ', now, '.'))
-
 print('Commencing runs.')
 
 # Basic models per protein
-
 d1_data <- d1
 
 mat_hazard <- matrix(nrow=length(clock),ncol=10)

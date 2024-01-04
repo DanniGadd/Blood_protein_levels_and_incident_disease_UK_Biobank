@@ -4,21 +4,9 @@
 
 ###############################################################################################
 
-# 50 randomly sampled seeds from 1 to 5000
-# Sample 50% cases/controls, then 1:3 control ratio to cases
-# Train scores and save weights
-# Test scores and save performance 
-
-###############################################################################################
-
-### Load sbatch information when run as array per disease
 args <- commandArgs(trailingOnly=TRUE)
 taskid <- as.numeric(args[1])
 print(paste0('taskid for this iteration is ', taskid))
-
-### Interactive session and R required for script troubleshooting
-# srun -p interactive --pty bash
-# module load R/4.2.0-foss-2021b
 
 ### Load packages
 library(readxl)
@@ -34,10 +22,9 @@ library(pacman)
 
 ### Use the trait cox tables from the incident disease summary table script:
 
-# Read subset files back in 
 results <- list()
 traits_list <- list()
-location <- 'Results/Cox/tables_cut/'
+location <- '/path_to_file.../tables_cut/'
 
 files <- list.files(location, '.csv')
 
@@ -47,17 +34,14 @@ for(i in 1:length(files)){
   file <- read.csv(paste0(location, name, '.csv'))
   traits_list[[i]] <- name
   results[[i]] <- file
-  # print(name)
-  # print(dim(file))
 }
 
 # Set the array iteration for disease selection
 i <- taskid
-
 format <- sub(".csv", "", files)
 
 ### Define the traits that will be assessed over 5yr and 10yr follow up 
-list_5yr <- c('ALS', 'ALS_FO', 'BRAIN_FO', 'Dep', 'DEP_FO', 'LUP', 'LUP_FO', 'CYS_FO', 'ENDO_FO')
+list_5yr <- c( 'ALS_FO', 'CYS_FO', 'ENDO_FO')
 list_10yr <- format[-which(format %in% list_5yr)]
 
 ###############################################################################################
@@ -66,8 +50,8 @@ list_10yr <- format[-which(format %in% list_5yr)]
 # seed <- 4237
 # set.seed(seed)
 # seed_list <- floor(runif(50, min=1, max=5000))
-# write.csv(seed_list, '00_50_randomly_sampled_seeds/seed_list_50_sampled_with_seed_4237.csv')
-seed_list <- read.csv('00_50_randomly_sampled_seeds/seed_list_50_sampled_with_seed_4237.csv')
+# write.csv(seed_list, '/path_to_file.../seed_list_50_sampled_with_seed_4237.csv')
+seed_list <- read.csv('/path_to_file.../seed_list_50_sampled_with_seed_4237.csv')
 seed_list <- seed_list$x
 
 ###############################################################################################
@@ -78,12 +62,12 @@ cox <- results[[i]]
 print(paste0('The disease trait for this iteration is ', name))
 
 # Create output folder for disease with file subdirectory
-location_out <- 'Results/Cox/Proteinscores/'
+location_out <- '/path_to_file.../ProteinScores/Run_210723/'
 dir.create(paste0(location_out, name))
 dir.create(paste0(location_out, name, '/files'))
 
 ### Isolate cases and controls available in the full sample for this disease
-cox <- cox[which(cox$tte > 0),] # ensure no negative tte between 0 and -1 for predictor models 
+cox <- cox[which(cox$tte > 0),] 
 names(cox)[15] <- 'time_to_event'
 cases <- cox[which(cox$Event == '1'),]
 controls <- cox[which(cox$Event == '0'),]
@@ -91,7 +75,7 @@ controls <- cox[which(cox$Event == '0'),]
 ###############################################################################################
 
 ### Load imputed proteins from imputation prep script - (i.e. that have not been transformed or scaled with related excluded - transformations and scaling are done per train/test set below)
-olink <- readRDS('knn_imputed_processed_olink_internal_proteins.rds')
+olink <- readRDS('/path_to_file.../knn_imputed_processed_olink_internal_proteins.rds')
 print('Protein data loaded. Sampling train and test populations now.')
 
 ###############################################################################################

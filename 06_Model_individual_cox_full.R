@@ -15,17 +15,15 @@ library(tidyverse)
 print('Packages loaded - now loading d1 file.')
 
 # Set locations
-location_codes <- '/path_to_files.../prepped_traits_used_with_dates/'
-location_self <- '/path_to_files.../self_report_preps/'
-
-location_tables <- '/path_to_files.../Tables/'
-location_results <- '/path_to_files.../results/results/'
+location_codes <- 'prepped_traits_used_with_dates/'
+location_self <- 'self_report_preps/'
+location_results <- 'Results/Cox/Results/'
 
 # Read in phenotypes
-d1 <- readRDS("/path_to_files.../d1_202206_test.rds")
+d1 <- readRDS("d1_202110_diseases_and_cancer.rds")
 
 # Add PA as covariate 
-PA <- read.csv('/path_to_files.../covariates_additional.csv')
+PA <- read.csv('Censor_test/PA.csv')
 PA <- PA[which(colnames(PA) %in% c('SampleID', 'PA'))]
 d1 <- left_join(d1, PA, by = 'SampleID')
 
@@ -35,19 +33,15 @@ clock <- names(d1)[56:1523]
 
 # Set disease and read in disease codes for the iteration (array)
 iteration <- taskid
-
-# Diseases - set lists
-diseases <- list.files('/path_to_files.../prepped_traits_used_with_dates/')
-diseases <- sub(".csv", "", diseases)
-
-restricted_list <- c('AL', 'VD', 'AL_FO', 'VD_FO')
-sex_list <- c('CYS', 'CYS_FO', 'ENDO', 'ENDO_FO')
+diseases <- c("AL_FO", "ALS_FO", "COPD_FO", "CYS_FO", "DEP_FO", "Diab_FO", "ENDO_FO", "IBD_FO",
+              "IHD_FO", "LIV_FO", "LUP_FO", "MS_FO", "PD_FO", "RA_FO", "SCZ_FO", "ST_FO", "VD_FO")
+restricted_list <- c('AL_FO', 'VD_FO')
+sex_list <- c('CYS_FO', 'ENDO_FO')
 male_list <- c('Prostate')
 Flist <- diseases[grep('_FO', diseases)]
 
 name <- as.character(diseases[iteration])
 print(paste0('disease for this iteration is ', name))
-
 codes <- read.csv(paste0(location_codes, name, '.csv'))
 
 if(name %in% Flist){
@@ -58,11 +52,9 @@ if(name %in% Flist){
 
 now <- Sys.time()
 print(paste0('Models initiating. Time start stamp: ', now, '.'))
-
 print('Commencing runs.')
 
 # Basic models per protein
-
 d1_data <- d1
 
 mat_hazard <- matrix(nrow=length(clock),ncol=10)
